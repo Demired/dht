@@ -49,17 +49,36 @@ func int2bytes(val uint64) []byte {
 	return data[:1]
 }
 
-// decodeCompactIPPortInfo decodes compactIP-address/port info in BitTorrent
-// DHT Protocol. It returns the ip and port number.
-func decodeCompactIPPortInfo(info string) (ip net.IP, port int, err error) {
-	if len(info) != 6 {
-		err = errors.New("compact info should be 6-length long")
-		return
-	}
+// // decodeCompactIPPortInfo decodes compactIP-address/port info in BitTorrent
+// // DHT Protocol. It returns the ip and port number.
+// func decodeCompactIPPortInfo(info string) (ip net.IP, port int, err error) {
+// 	if len(info) != 6 {
+// 		err = errors.New("compact info should be 6-length long")
+// 		return
+// 	}
 
-	ip = net.IPv4(info[0], info[1], info[2], info[3])
-	port = int((uint16(info[4]) << 8) | uint16(info[5]))
-	return
+// 	ip = net.IPv4(info[0], info[1], info[2], info[3])
+// 	port = int((uint16(info[4]) << 8) | uint16(info[5]))
+// 	return
+// }
+
+func decodeCompactIPPortInfo(info []byte) (ip net.IP, port int, err error) {
+    length := len(info)
+    if length != 6 && length != 18 {
+        return nil, 0, errors.New("compact info must be 6 bytes (IPv4) or 18 bytes (IPv6)")
+    }
+
+    if length == 6 {
+        // IPv4: 4 bytes IP + 2 bytes port
+        ip = net.IPv4(info[0], info[1], info[2], info[3])
+        port = int(binary.BigEndian.Uint16(info[4:6]))
+        return ip, port, nil
+    }
+
+    // IPv6: 16 bytes IP + 2 bytes port
+    ip = net.IP(info[0:16]) // net.IP 会自动识别为 IPv6
+    port = int(binary.BigEndian.Uint16(info[16:18]))
+    return ip, port, nil
 }
 
 // encodeCompactIPPortInfo encodes an ip and a port number to
