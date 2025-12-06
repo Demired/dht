@@ -33,18 +33,48 @@ func newNode(id, network, address string) (*node, error) {
 	return &node{newBitmapFromString(id), addr, time.Now()}, nil
 }
 
-// newNodeFromCompactInfo parses compactNodeInfo and returns a node pointer.
-func newNodeFromCompactInfo(
-	compactNodeInfo string, network string) (*node, error) {
+// // newNodeFromCompactInfo parses compactNodeInfo and returns a node pointer.
+// func newNodeFromCompactInfo(
+// 	compactNodeInfo string, network string) (*node, error) {
 
-	if len(compactNodeInfo) != 26 {
-		return nil, errors.New("compactNodeInfo should be a 26-length string")
-	}
+// 	if len(compactNodeInfo) != 26 {
+// 		return nil, errors.New("compactNodeInfo should be a 26-length string")
+// 	}
 
-	id := compactNodeInfo[:20]
-	ip, port, _ := decodeCompactIPPortInfo(compactNodeInfo[20:])
+// 	id := compactNodeInfo[:20]
+// 	ip, port, _ := decodeCompactIPPortInfo(compactNodeInfo[20:])
 
-	return newNode(id, network, genAddress(ip.String(), port))
+// 	return newNode(id, network, genAddress(ip.String(), port))
+// }
+
+func newNodeFromCompactInfo(compactNodeInfo []byte) (*node, error) {
+    // compactNodeInfo = 20 bytes nodeID + (6 or 18 bytes) compact IP:port
+    totalLen := len(compactNodeInfo)
+    if totalLen != 26 && totalLen != 38 {
+        return nil, errors.New("compactNodeInfo must be 26 bytes (IPv4) or 38 bytes (IPv6)")
+    }
+
+    id := string(compactNodeInfo[:20]) // nodeID 永远是 20 字节
+
+    var ip net.IP
+    var port int
+    var err error
+
+    if totalLen == 26 {
+        // IPv4
+        ip = net.IPv4(compactNodeInfo[20], compactNodeInfo[21], compactNodeInfo[22], compactNodeInfo[23])
+        port = int(binary.BigEndian.Uint16(compactNodeInfo[24:26]))
+    } else {
+        // IPv6
+        ip = net.IP(compactNodeInfo[20:36]) // 16 bytes
+        port = int(binary.BigEndian.Uint16(compactNodeInfo[36:38]))
+    }
+
+    if ip == nil {
+        return nil, errors.New("invalid IP in compact node info")
+    }
+
+    return newNode(id, &net.UDPAddr{IP: ip, Port: port}), nil
 }
 
 // CompactIPPortInfo returns "Compact IP-address/port info".
