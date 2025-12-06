@@ -1,12 +1,9 @@
 package main
 
 import (
-	"bytes"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"log"
-	"net/http"
 
 	"github.com/Demired/dht"
 )
@@ -63,17 +60,7 @@ func Run() {
 				// } else if _, ok := info["length"]; ok {
 				// 	bt.Length = info["length"].(int)
 			}
-			btJSON, _ := json.Marshal(bt)
-			resf, _ := http.Post("https://clientapi.ipip.net/bt/file", "Content-Type:application/json", bytes.NewBuffer(btJSON))
-			down := downTorrent{
-				IP:       resp.IP,
-				Port:     resp.Port,
-				InfoHash: hex.EncodeToString(resp.InfoHash),
-			}
-			downJSON, _ := json.Marshal(down)
-			resd, _ := http.Post("https://clientapi.ipip.net/bt/down", "Content-Type:application/json", bytes.NewBuffer(downJSON))
-			resd.Body.Close()
-			resf.Body.Close()
+
 		}
 	}()
 	go downloader.Run()
