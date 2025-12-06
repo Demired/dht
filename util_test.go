@@ -71,6 +71,16 @@ func TestDecodeCompactIPPortInfo(t *testing.T) {
 			t.Fail()
 		}
 	}
+
+	// Test IPv6 - using raw bytes for IPv6 address 2001:db8::1 with port 6881
+	ipv6Data := string([]byte{0x20, 0x01, 0x0d, 0xb8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x1a, 0xe1})
+	ip, port, err := decodeCompactIPPortInfo(ipv6Data)
+	if err != nil {
+		t.Errorf("IPv6 decode failed: %v", err)
+	}
+	if ip.String() != "2001:db8::1" || port != 6881 {
+		t.Errorf("IPv6 decode failed: got %s:%d, expected %s:%d", ip.String(), port, "2001:db8::1", 6881)
+	}
 }
 
 func TestEncodeCompactIPPortInfo(t *testing.T) {
@@ -95,6 +105,26 @@ func TestEncodeCompactIPPortInfo(t *testing.T) {
 		info, err := encodeCompactIPPortInfo(item.in.ip, item.in.port)
 		if err != nil || info != item.out {
 			t.Fail()
+		}
+	}
+
+	// Test IPv6 - manually create the expected bytes for IPv6 address 2001:db8::1 with port 6881
+	ip := []byte{0x20, 0x01, 0x0d, 0xb8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01}
+	port := 6881
+
+	info, err := encodeCompactIPPortInfo(ip, port)
+	if err != nil {
+		t.Errorf("IPv6 encode failed: %v", err)
+	}
+
+	expected := []byte{0x20, 0x01, 0x0d, 0xb8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x1a, 0xe1}
+	if len(info) != 18 {
+		t.Errorf("IPv6 encoded info wrong length: got %d, expected 18", len(info))
+	}
+
+	for i, b := range []byte(info) {
+		if b != expected[i] {
+			t.Errorf("IPv6 encoded info mismatch at byte %d: got %x, expected %x", i, b, expected[i])
 		}
 	}
 }

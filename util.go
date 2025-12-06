@@ -49,36 +49,24 @@ func int2bytes(val uint64) []byte {
 	return data[:1]
 }
 
-// // decodeCompactIPPortInfo decodes compactIP-address/port info in BitTorrent
-// // DHT Protocol. It returns the ip and port number.
-// func decodeCompactIPPortInfo(info string) (ip net.IP, port int, err error) {
-// 	if len(info) != 6 {
-// 		err = errors.New("compact info should be 6-length long")
-// 		return
-// 	}
+// decodeCompactIPPortInfo decodes compactIP-address/port info in BitTorrent
+// DHT Protocol. It returns the ip and port number.
+func decodeCompactIPPortInfo(info string) (ip net.IP, port int, err error) {
+	if len(info) != 6 && len(info) != 18 {
+		err = errors.New("compact info should be 6-length (IPv4) or 18-length (IPv6) long")
+		return
+	}
 
-// 	ip = net.IPv4(info[0], info[1], info[2], info[3])
-// 	port = int((uint16(info[4]) << 8) | uint16(info[5]))
-// 	return
-// }
-
-func decodeCompactIPPortInfo(info []byte) (ip net.IP, port int, err error) {
-    length := len(info)
-    if length != 6 && length != 18 {
-        return nil, 0, errors.New("compact info must be 6 bytes (IPv4) or 18 bytes (IPv6)")
-    }
-
-    if length == 6 {
-        // IPv4: 4 bytes IP + 2 bytes port
-        ip = net.IPv4(info[0], info[1], info[2], info[3])
-        port = int(binary.BigEndian.Uint16(info[4:6]))
-        return ip, port, nil
-    }
-
-    // IPv6: 16 bytes IP + 2 bytes port
-    ip = net.IP(info[0:16]) // net.IP 会自动识别为 IPv6
-    port = int(binary.BigEndian.Uint16(info[16:18]))
-    return ip, port, nil
+	if len(info) == 6 {
+		// IPv4
+		ip = net.IPv4(info[0], info[1], info[2], info[3])
+		port = int((uint16(info[4]) << 8) | uint16(info[5]))
+	} else {
+		// IPv6
+		ip = net.IP(info[:16])
+		port = int((uint16(info[16]) << 8) | uint16(info[17]))
+	}
+	return
 }
 
 // encodeCompactIPPortInfo encodes an ip and a port number to
@@ -90,13 +78,28 @@ func encodeCompactIPPortInfo(ip net.IP, port int) (info string, err error) {
 		return
 	}
 
-	p := int2bytes(uint64(port))
-	if len(p) < 2 {
-		p = append(p, p[0])
-		p[0] = 0
+	// Convert to 4-byte or 16-byte IP representation
+	ip4 := ip.To4()
+	if ip4 != nil {
+		// IPv4
+		p := int2bytes(uint64(port))
+		if len(p) < 2 {
+			p = append(p, p[0])
+			p[0] = 0
+		}
+		info = string(append(ip4, p...))
+	} else {
+		// IPv6
+		ip16 := ip.To16()
+		if ip16 == nil {
+			err = errors.New("invalid IP address")
+			return
+		}
+		p := make([]byte, 2)
+		p[0] = byte(port >> 8)
+		p[1] = byte(port)
+		info = string(append(ip16, p...))
 	}
-
-	info = string(append(ip, p...))
 	return
 }
 

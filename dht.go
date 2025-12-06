@@ -77,7 +77,7 @@ func NewStandardConfig() *Config {
 	return &Config{
 		K:           8,
 		KBucketSize: 8,
-		Network:     "udp4",
+		Network:     "udp",
 		Address:     ":6881",
 		PrimeNodes: []string{
 			"router.bittorrent.com:6881",
@@ -216,12 +216,17 @@ func (dht *DHT) listen() {
 	go func() {
 		buff := make([]byte, 8192)
 		for {
-			n, raddr, err := dht.conn.ReadFromUDP(buff)
+			n, raddr, err := dht.conn.ReadFrom(buff)
 			if err != nil {
 				continue
 			}
 
-			dht.packets <- packet{buff[:n], raddr}
+			udpAddr, ok := raddr.(*net.UDPAddr)
+			if !ok {
+				continue
+			}
+
+			dht.packets <- packet{buff[:n], udpAddr}
 		}
 	}()
 }

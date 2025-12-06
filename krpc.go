@@ -22,7 +22,7 @@ const (
 	unknownError
 )
 
-// packet represents the information receive from udp.
+// packet represents the information received from UDP connections.
 type packet struct {
 	data  []byte
 	raddr *net.UDPAddr
